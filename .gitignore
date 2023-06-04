@@ -1,0 +1,12 @@
+# IDE configure file
+.idea
+
+# OS tmp file
+.DS_Store
+
+# env file
+.env
+
+# test generated files
+coverage.out
+coverage.html
