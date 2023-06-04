@@ -99,7 +99,6 @@ func QueryRow(ctx context.Context, rst interface{}, query string, args ...interf
 	return nil
 }
 
-
 func Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	start := time.Now()
 	defer func() {

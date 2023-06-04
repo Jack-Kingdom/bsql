@@ -40,7 +40,7 @@ type UserType struct {
 	Id        int       `json:"id"`
 	Username  string    `json:"username"`
 	Password  string    `json:"password"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at" bsql:"created_at"`
 }
 
 func TestCURD(t *testing.T) {

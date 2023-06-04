@@ -9,47 +9,18 @@ import (
 	"strings"
 )
 
-/*
- * get column name from struct tag
- * use tag column first, then json, then yaml
- */
-func getColumnName(tag reflect.StructTag) string {
-	column := tag.Get("column")
+func getColumnName(field reflect.StructField) string {
+	definedName := field.Tag.Get("bsql")
 
-	if column == "-" {
-		return ""
-	}
-	if column != "" {
-		return column
-	}
-
-	column = tag.Get("json")
-	if column != "" && column != "-" {
-		return column
-	}
-
-	column = tag.Get("yaml")
-	if column != "" && column != "-" {
-		return column
-	}
-
-	return ""
-}
-
-/*
- * get scoped column name from struct tag
- */
-func getScopedName(tag reflect.StructTag) string {
-	column := getColumnName(tag)
-	if column == "" {
+	if definedName == "-" {
 		return ""
 	}
 
-	scope := tag.Get("scope")
-	if scope != "" {
-		return fmt.Sprintf("%s.%s", scope, column)
+	if definedName != "" {
+		return definedName
 	}
-	return column
+
+	return field.Name
 }
 
 func getColumns(obj interface{}) string {
@@ -60,9 +31,14 @@ func getColumns(obj interface{}) string {
 		val = reflect.ValueOf(obj)
 	}
 
+	valType := val.Type()
+	if valType.Kind() != reflect.Struct {
+		panic(errors.New("obj not a struct"))
+	}
+
 	var names []string
 	for i := 0; i < val.NumField(); i++ {
-		column := getScopedName(val.Type().Field(i).Tag)
+		column := getColumnName(val.Type().Field(i))
 		if column == "" {
 			continue
 		}
@@ -74,7 +50,7 @@ func getColumns(obj interface{}) string {
 func getColumnsByType(typ reflect.Type) string {
 	var names []string
 	for i := 0; i < typ.NumField(); i++ {
-		column := getScopedName(typ.Field(i).Tag)
+		column := getColumnName(typ.Field(i))
 		if column == "" {
 			continue
 		}
@@ -87,7 +63,7 @@ func getBinding(obj interface{}) []interface{} {
 	val := reflect.ValueOf(obj)
 	var addrs []interface{}
 	for i := 0; i < val.Elem().NumField(); i++ {
-		column := getColumnName(val.Elem().Type().Field(i).Tag)
+		column := getColumnName(val.Elem().Type().Field(i))
 		if column == "" {
 			continue
 		}
