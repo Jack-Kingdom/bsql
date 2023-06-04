@@ -2,6 +2,7 @@ package bsql_test
 
 import (
 	"context"
+	"errors"
 	"github.com/Jack-Kingdom/bsql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
@@ -54,13 +55,14 @@ func TestCURD(t *testing.T) {
 
 	var users []UserType
 	err = bsql.QueryRows(context.TODO(), &users, "SELECT * FROM user LIMIT 10")
-	assert.Equal(t, err, bsql.ErrTableNotExists)
+	assert.True(t, errors.Is(err, bsql.ErrTableNotExists))
 
 	_, err = bsql.Exec(context.TODO(), createTableSql)
 	require.Nil(t, err)
 
-	err = bsql.QueryRows(context.TODO(), &users, "SELECT * FROM user LIMIT 10")
-	assert.Equal(t, err, bsql.ErrNoRecord)
+	var user UserType
+	err = bsql.QueryRow(context.TODO(), &user, "SELECT * FROM user LIMIT 10")
+	assert.True(t, errors.Is(err, bsql.ErrNoRecord))
 
 	_, err = bsql.Exec(context.TODO(), "INSERT INTO user (username, password, created_at) VALUES (?, ?, ?)", "jack", "123456", time.Now().UTC())
 	require.Nil(t, err)

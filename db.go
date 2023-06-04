@@ -8,12 +8,14 @@ import (
 )
 
 var (
-	pool dbPoolType
+	defaultPool             dbPoolType
 	ErrNoDatabaseRegistered = errors.New("no db registered")
+	ErrDriverNameNotMatch   = errors.New("driver name not match")
 )
 
 type dbPoolType struct {
-	master []*sql.DB
+	driverName string
+	master     []*sql.DB
 }
 
 func (dbPool *dbPoolType) registerMaster(driverName, connStr string) error {
@@ -23,8 +25,14 @@ func (dbPool *dbPoolType) registerMaster(driverName, connStr string) error {
 	}
 
 	err = db.Ping()
-	if err !=nil {
+	if err != nil {
 		return fmt.Errorf("err on ping db: %w, %s", err, connStr)
+	}
+
+	if dbPool.driverName == "" {
+		dbPool.driverName = driverName
+	} else if dbPool.driverName != driverName {
+		return fmt.Errorf("%w: %s, %s", ErrDriverNameNotMatch, dbPool.driverName, driverName)
 	}
 
 	dbPool.master = append(dbPool.master, db)
@@ -32,7 +40,7 @@ func (dbPool *dbPoolType) registerMaster(driverName, connStr string) error {
 }
 
 func RegisterMaster(driverName, connStr string) error {
-	return pool.registerMaster(driverName, connStr)
+	return defaultPool.registerMaster(driverName, connStr)
 }
 
 func (dbPool *dbPoolType) getMaster() (*sql.DB, error) {
@@ -43,5 +51,5 @@ func (dbPool *dbPoolType) getMaster() (*sql.DB, error) {
 }
 
 func GetMaster() (*sql.DB, error) {
-	return pool.getMaster()
+	return defaultPool.getMaster()
 }

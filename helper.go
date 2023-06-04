@@ -1,7 +1,10 @@
 package bsql
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"reflect"
 	"strings"
 )
@@ -9,7 +12,7 @@ import (
 /*
  * get column name from struct tag
  * use tag column first, then json, then yaml
-*/
+ */
 func getColumnName(tag reflect.StructTag) string {
 	column := tag.Get("column")
 
@@ -35,7 +38,7 @@ func getColumnName(tag reflect.StructTag) string {
 
 /*
  * get scoped column name from struct tag
-*/
+ */
 func getScopedName(tag reflect.StructTag) string {
 	column := getColumnName(tag)
 	if column == "" {
@@ -53,7 +56,7 @@ func getColumns(obj interface{}) string {
 	var val reflect.Value
 	if reflect.TypeOf(obj).Kind() == reflect.Ptr {
 		val = reflect.ValueOf(obj).Elem()
-	}else {
+	} else {
 		val = reflect.ValueOf(obj)
 	}
 
@@ -95,13 +98,30 @@ func getBinding(obj interface{}) []interface{} {
 	return addrs
 }
 
-func genInPlaceHolder(num int) string {
-	var sb strings.Builder
-	for i := 0; i < num; i++ {
-		if i > 0 {
-			sb.WriteString(",")
-		}
-		sb.WriteString("?")
+var (
+	ErrTableNotExists = errors.New("table not exists")
+	ErrNoRecord       = errors.New("no record")
+	ErrUndefined      = errors.New("undefined error")
+)
+
+func unifyError(driverName string, err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNoRecord
 	}
-	return sb.String()
+
+	switch driverName {
+	case "mysql":
+		mysqlErr, ok := err.(*mysql.MySQLError)
+		if !ok {
+			panic("mysql error type not match")
+		}
+
+		switch mysqlErr.Number {
+		case 1146:
+			return ErrTableNotExists
+		default:
+			return fmt.Errorf("undefined err: %w, content: %s", ErrUndefined, mysqlErr.Error())
+		}
+	}
+	return err
 }
