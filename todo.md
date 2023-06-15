@@ -2,3 +2,4 @@
 
 - support database master/slave mode
 - separate logger
+- auto camelcase
