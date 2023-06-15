@@ -8,17 +8,21 @@ import (
 
 func TestGetColumns(t *testing.T) {
 	type Test struct {
-		Hello string `json:"hello" bsql:"hello"`
-		Word  string `json:"word"`
+		Id    int    `json:"id" bsql:",insert:ignore"`
+		Hello string `json:"hello"`
+		World string `json:"word" bsql:"bingo"`
 	}
 	test := Test{}
 
-	columns := getColumns(test)
-	assert.Equal(t, "hello, Word", columns)
+	_, columns := getColumns(test, opsTypeQuery)
+	assert.Equal(t, "id, hello, bingo", columns)
 
-	columns = getColumns(&test)
-	assert.Equal(t, "hello, Word", columns)
+	_, columns = getColumns(&test, opsTypeQuery)
+	assert.Equal(t, "id, hello, bingo", columns)
 
-	columns = getColumnsByType(reflect.TypeOf(test))
-	assert.Equal(t, "hello, Word", columns)
+	_, columns = getColumnsByType(reflect.TypeOf(test), opsTypeQuery)
+	assert.Equal(t, "id, hello, bingo", columns)
+
+	_, columns = getColumns(&test, opsTypeInsert)
+	assert.Equal(t, "hello, bingo", columns)
 }

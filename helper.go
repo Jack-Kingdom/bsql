@@ -9,21 +9,41 @@ import (
 	"strings"
 )
 
-func getColumnName(field reflect.StructField) string {
-	definedName := field.Tag.Get("bsql")
+type opsType int
 
-	if definedName == "-" {
-		return ""
+const (
+	opsTypeQuery opsType = iota
+	opsTypeInsert
+)
+
+func getColumnName(field reflect.StructField, ops opsType) string {
+	tag := field.Tag.Get("bsql")
+
+	configuration := strings.Split(tag, ",")
+
+	var fieldName string
+	for i, config := range configuration {
+		if i == 0 {
+			if config == "-" {
+				return ""
+			}
+
+			if config == "" {
+				fieldName = field.Name
+			} else {
+				fieldName = config
+			}
+		} else {
+			if config == "insert:ignore" && ops == opsTypeInsert {
+				return ""
+			}
+		}
 	}
 
-	if definedName != "" {
-		return definedName
-	}
-
-	return field.Name
+	return strings.ToLower(fieldName)
 }
 
-func getColumns(obj interface{}) string {
+func getColumns(obj interface{}, ops opsType) (int, string) {
 	var val reflect.Value
 	if reflect.TypeOf(obj).Kind() == reflect.Ptr {
 		val = reflect.ValueOf(obj).Elem()
@@ -38,32 +58,32 @@ func getColumns(obj interface{}) string {
 
 	var names []string
 	for i := 0; i < val.NumField(); i++ {
-		column := getColumnName(val.Type().Field(i))
+		column := getColumnName(val.Type().Field(i), ops)
 		if column == "" {
 			continue
 		}
 		names = append(names, column)
 	}
-	return strings.Join(names, ", ")
+	return len(names), strings.Join(names, ", ")
 }
 
-func getColumnsByType(typ reflect.Type) string {
+func getColumnsByType(typ reflect.Type, ops opsType) (int, string) {
 	var names []string
 	for i := 0; i < typ.NumField(); i++ {
-		column := getColumnName(typ.Field(i))
+		column := getColumnName(typ.Field(i), ops)
 		if column == "" {
 			continue
 		}
 		names = append(names, column)
 	}
-	return strings.Join(names, ", ")
+	return len(names), strings.Join(names, ", ")
 }
 
-func getBinding(obj interface{}) []interface{} {
+func getBinding(obj interface{}, ops opsType) []interface{} {
 	val := reflect.ValueOf(obj)
 	var addrs []interface{}
 	for i := 0; i < val.Elem().NumField(); i++ {
-		column := getColumnName(val.Elem().Type().Field(i))
+		column := getColumnName(val.Elem().Type().Field(i), ops)
 		if column == "" {
 			continue
 		}
@@ -100,4 +120,15 @@ func unifyError(driverName string, err error) error {
 		}
 	}
 	return err
+}
+
+func genInPlaceHolder(num int) string {
+	var sb strings.Builder
+	for i := 0; i < num; i++ {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString("?")
+	}
+	return sb.String()
 }
