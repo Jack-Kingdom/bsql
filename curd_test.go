@@ -2,6 +2,7 @@ package bsql_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"github.com/Jack-Kingdom/bsql"
 	_ "github.com/go-sql-driver/mysql"
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS user (
 )
 
 type UserType struct {
-	Id        int       `json:"id" bsql:"id,insert:ignore"`
+	Id        int64       `json:"id" bsql:"id,insert:ignore"`
 	Username  string    `json:"username"`
 	Password  string    `json:"password"`
 	CreatedAt time.Time `json:"created_at" bsql:"created_at"`
@@ -68,7 +69,10 @@ func TestCURD(t *testing.T) {
 		Password:  "123",
 		CreatedAt: time.Now().UTC(),
 	}
-	_, err = bsql.Insert(context.TODO(), "INSERT INTO user (*) VALUES (*)", &newUser)
+	var sqlResult sql.Result
+	sqlResult, err = bsql.Insert(context.TODO(), "INSERT INTO user (*) VALUES (*)", &newUser)
+	require.Nil(t, err)
+	newUser.Id, err = sqlResult.LastInsertId()
 	require.Nil(t, err)
 
 	err = bsql.QueryRows(context.TODO(), &users, "SELECT * FROM user LIMIT 10")
@@ -76,6 +80,7 @@ func TestCURD(t *testing.T) {
 	assert.Equal(t, 1, len(users))
 
 	insertedUser := users[0]
+	assert.Equal(t, newUser.Id, insertedUser.Id)
 	assert.Equal(t, newUser.Username, insertedUser.Username)
 	assert.Equal(t, newUser.Password, insertedUser.Password)
 	assert.Less(t, newUser.CreatedAt.Unix()-5, insertedUser.CreatedAt.Unix())
