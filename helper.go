@@ -109,14 +109,14 @@ func unifyError(driverName string, err error) error {
 	case "mysql":
 		mysqlErr, ok := err.(*mysql.MySQLError)
 		if !ok {
-			panic("mysql error type not match")
+			return fmt.Errorf("unknown error: %w", err)
 		}
 
 		switch mysqlErr.Number {
 		case 1146:
 			return ErrTableNotExists
 		default:
-			return fmt.Errorf("undefined err: %w, content: %s", ErrUndefined, mysqlErr.Error())
+			return fmt.Errorf("undefined mysql err: %w, content: %s", ErrUndefined, mysqlErr.Error())
 		}
 	}
 	return err

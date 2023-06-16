@@ -75,7 +75,7 @@ func QueryRow(ctx context.Context, rst interface{}, query string, args ...interf
 	var executed string
 	start := time.Now()
 	defer func() {
-		zap.L().Info("QueryRow", zap.String("sql", query), zap.Any("args", args), zap.Duration("duration", time.Since(start)))
+		zap.L().Info("QueryRow", zap.String("sql", executed), zap.Any("args", args), zap.Duration("duration", time.Since(start)))
 	}()
 
 	db, err := defaultPool.getMaster()
