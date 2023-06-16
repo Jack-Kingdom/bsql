@@ -96,6 +96,7 @@ func getBinding(obj interface{}, ops opsType) []interface{} {
 
 var (
 	ErrTableNotExists = errors.New("table not exists")
+	ErrDuplicateEntry = errors.New("duplicate entry")
 	ErrNoRecord       = errors.New("no record")
 	ErrUndefined      = errors.New("undefined error")
 )
@@ -114,7 +115,9 @@ func unifyError(driverName string, err error) error {
 
 		switch mysqlErr.Number {
 		case 1146:
-			return ErrTableNotExists
+			return fmt.Errorf("%w: %s", ErrTableNotExists, mysqlErr.Error())
+		case 1062:
+			return fmt.Errorf("%w: %s", ErrDuplicateEntry, mysqlErr.Error())
 		default:
 			return fmt.Errorf("undefined mysql err: %w, content: %s", ErrUndefined, mysqlErr.Error())
 		}
