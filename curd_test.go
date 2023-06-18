@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/Jack-Kingdom/bsql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
@@ -24,7 +25,17 @@ func initEnvironment() error {
 		return err
 	}
 
-	return bsql.RegisterMaster("mysql", os.Getenv("MYSQL_CONN_STR"))
+	db, err := sql.Open("mysql", os.Getenv("MYSQL_CONN_STR"))
+	if err != nil {
+		return fmt.Errorf("err on open db connection: %w", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return fmt.Errorf("err on ping db: %w", err)
+	}
+
+	return bsql.RegisterMaster("mysql", db)
 }
 
 var (

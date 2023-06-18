@@ -18,17 +18,7 @@ type dbPoolType struct {
 	master     []*sql.DB
 }
 
-func (dbPool *dbPoolType) registerMaster(driverName, connStr string) error {
-	db, err := sql.Open(driverName, connStr)
-	if err != nil {
-		return fmt.Errorf("err on open db connection: %w", err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		return fmt.Errorf("err on ping db: %w, %s", err, connStr)
-	}
-
+func (dbPool *dbPoolType) registerMaster(driverName string, db *sql.DB) error {
 	if dbPool.driverName == "" {
 		dbPool.driverName = driverName
 	} else if dbPool.driverName != driverName {
@@ -39,8 +29,8 @@ func (dbPool *dbPoolType) registerMaster(driverName, connStr string) error {
 	return nil
 }
 
-func RegisterMaster(driverName, connStr string) error {
-	return defaultPool.registerMaster(driverName, connStr)
+func RegisterMaster(driverName string, db *sql.DB) error {
+	return defaultPool.registerMaster(driverName, db)
 }
 
 func (dbPool *dbPoolType) getMaster() (*sql.DB, error) {
