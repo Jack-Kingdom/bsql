@@ -120,7 +120,7 @@ func Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, e
 	return stmt.ExecContext(ctx, args...)
 }
 
-func Insert(ctx context.Context, query string, data interface{}) (sql.Result, error) {
+func Insert(ctx context.Context, query string, data interface{}, args ...interface{}) (sql.Result, error) {
 	var executed string
 	start := time.Now()
 	defer func() {
@@ -141,5 +141,10 @@ func Insert(ctx context.Context, query string, data interface{}) (sql.Result, er
 	}
 	defer stmt.Close()
 
-	return stmt.ExecContext(ctx, getBinding(data, opsTypeInsert)...)
+	allArgs := getBinding(data, opsTypeInsert)
+	for _, arg := range args {
+		allArgs = append(allArgs, arg)
+	}
+
+	return stmt.ExecContext(ctx, allArgs...)
 }

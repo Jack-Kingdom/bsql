@@ -38,23 +38,6 @@ func initEnvironment() error {
 	return bsql.RegisterMaster("mysql", db)
 }
 
-var (
-	createTableSql = `
-CREATE TABLE IF NOT EXISTS user (
-	id INTEGER PRIMARY KEY AUTO_INCREMENT,
-	username VARCHAR(255) NOT NULL,
-	password VARCHAR(255) NOT NULL,
-	created_at DATETIME NOT NULL
-)`
-)
-
-type UserType struct {
-	Id        int64       `json:"id" bsql:"id,insert:ignore"`
-	Username  string    `json:"username"`
-	Password  string    `json:"password"`
-	CreatedAt time.Time `json:"created_at" bsql:"created_at"`
-}
-
 func TestCURD(t *testing.T) {
 	err := initEnvironment()
 	require.Nil(t, err)
@@ -64,10 +47,24 @@ func TestCURD(t *testing.T) {
 		require.Nil(t, err)
 	}()
 
+	type UserType struct {
+		Id        int64       `json:"id" bsql:"id,insert:ignore"`
+		Username  string    `json:"username"`
+		Password  string    `json:"password"`
+		CreatedAt time.Time `json:"created_at" bsql:"created_at"`
+	}
+
 	var users []UserType
 	err = bsql.QueryRows(context.TODO(), &users, "SELECT * FROM user LIMIT 10")
 	assert.True(t, errors.Is(err, bsql.ErrTableNotExists))
 
+	createTableSql := `
+CREATE TABLE IF NOT EXISTS user (
+	id INTEGER PRIMARY KEY AUTO_INCREMENT,
+	username VARCHAR(255) NOT NULL,
+	password VARCHAR(255) NOT NULL,
+	created_at DATETIME NOT NULL
+)`
 	_, err = bsql.Exec(context.TODO(), createTableSql)
 	require.Nil(t, err)
 
@@ -114,4 +111,43 @@ func TestCURD(t *testing.T) {
 	assert.Equal(t, updatedUser.Username, singleUser.Username)
 	assert.Equal(t, updatedUser.Password, singleUser.Password)
 	assert.Equal(t, updatedUser.CreatedAt, singleUser.CreatedAt)
+}
+
+func TestInsertDuplicate(t *testing.T) {
+	err := initEnvironment()
+	require.Nil(t, err)
+
+	defer func() {
+		_, err = bsql.Exec(context.TODO(), "DROP TABLE IF EXISTS kv")
+		require.Nil(t, err)
+	}()
+
+	createTableSql := `
+CREATE TABLE IF NOT EXISTS kv (
+	id INTEGER PRIMARY KEY AUTO_INCREMENT,
+	k VARCHAR(255) NOT NULL UNIQUE,
+	v VARCHAR(255) NOT NULL
+)`
+	_, err = bsql.Exec(context.TODO(), createTableSql)
+	require.Nil(t, err)
+
+	type KvType struct {
+		Id int64 `json:"id" bsql:"id,insert:ignore"`
+		K string `json:"k"`
+		V string `json:"v"`
+	}
+
+	testCase := KvType{K: "key", V: "value"}
+
+	_, err = bsql.Insert(context.TODO(), "INSERT INTO kv (*) VALUES (*)", &testCase)
+	require.Nil(t, err)
+
+	_, err = bsql.Insert(context.TODO(), "INSERT INTO kv (*) VALUES (*) ON DUPLICATE KEY UPDATE v = ?", &testCase, "value2")
+	require.Nil(t, err)
+
+	var existKv KvType
+	err = bsql.QueryRow(context.TODO(), &existKv, "SELECT * FROM kv WHERE k = ?", testCase.K)
+	require.Nil(t, err)
+
+	assert.Equal(t, existKv.V, "value2")
 }
